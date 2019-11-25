@@ -18,10 +18,10 @@ Marius-Constantin Dinu, Günter Klambauer, Sepp Hochreiter
 ## Reference and Link to thesis
 
 ```
-@ARTICLE{Dinu,
+@online{{Dinu19,
   author = {Dinu, M.C. and Klambauer, G. and Hochreiter, S.},
   title = {Overcoming Catastrophic Forgetting with Context-Dependent Activations (XdA) and Synaptic Stabilization},
-  howpublished = {\url{https://www.dinu.at/profile/home/overcoming-catastrophic-forgetting-with-context-dependent-activations-and-synaptic-stabilization/}},
+  url = {https://www.dinu.at/profile/home/overcoming-catastrophic-forgetting-with-context-dependent-activations-and-synaptic-stabilization},
   year = 2019
 }
 ```
