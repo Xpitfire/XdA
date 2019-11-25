@@ -1,0 +1,79 @@
+import sys
+import torch
+
+import utils
+
+import monitor
+import global_params
+
+logger = global_params.args.logger
+
+class Net(torch.nn.Module):
+
+    def __init__(self, inputsize, taskcla):
+        super(Net, self).__init__()
+
+        ncha, size, _ = inputsize
+        self.taskcla = taskcla
+        self.relu = torch.nn.ReLU()
+
+        self.conv1 = torch.nn.Conv2d(ncha, 64, kernel_size=size // 8)
+        s = utils.compute_conv_output_size(size, size // 8)
+        self.norm1 = torch.nn.LayerNorm(s, elementwise_affine=False)
+        s = s // 2
+        self.conv2 = torch.nn.Conv2d(64, 128, kernel_size=size // 10)
+        s = utils.compute_conv_output_size(s, size // 10)
+        self.norm2 = torch.nn.LayerNorm(s, elementwise_affine=False)
+        s = s // 2
+        self.conv3 = torch.nn.Conv2d(128, 256, kernel_size=2)
+        s = utils.compute_conv_output_size(s, 2)
+        self.norm3 = torch.nn.LayerNorm(s, elementwise_affine=False)
+        s = s // 2
+        self.maxpool = torch.nn.MaxPool2d(2)
+
+        self.drop1 = torch.nn.Dropout(0.2)
+        self.drop2 = torch.nn.Dropout(0.5)
+        self.fc1 = torch.nn.Linear(256 * s * s, 2048)
+        self.norm4 = torch.nn.LayerNorm(2048, elementwise_affine=False)
+        self.fc2 = torch.nn.Linear(2048, 2048)
+        self.norm5 = torch.nn.LayerNorm(2048, elementwise_affine=False)
+        self.last = torch.nn.ModuleList()
+        for t, n in self.taskcla:
+            self.last.append(torch.nn.Linear(2048, n))
+
+        return
+
+    def forward(self, x, t):
+        h = self.relu(self.norm1(self.conv1(x)))
+        logger.log_hist("c1_mu", h.mean(0).data.cpu().numpy())
+
+        h = self.drop1(h)
+        h = self.maxpool(h)
+
+        h = self.relu(self.norm2(self.conv2(h)))
+        logger.log_hist("c2_mu", h.mean(0).data.cpu().numpy())
+
+        h = self.drop1(h)
+        h = self.maxpool(h)
+
+        h = self.relu(self.norm3(self.conv3(h)))
+        logger.log_hist("c3_mu", h.mean(0).data.cpu().numpy())
+
+        h = self.drop2(h)
+        h = self.maxpool(h)
+
+        h = h.view(x.size(0), -1)
+        h = self.relu(self.norm4(self.fc1(h)))
+        logger.log_hist("fc1_mu", h.mean(0).data.cpu().numpy())
+
+        h = self.drop2(h)
+        h = self.relu(self.norm5(self.fc2(h)))
+        logger.log_hist("fc2_mu", h.mean(0).data.cpu().numpy())
+
+        h = self.drop2(h)
+
+        y = []
+        for t, i in self.taskcla:
+            y.append(self.last[t](h))
+
+        return y
